@@ -23,9 +23,13 @@ import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { VditorBody } from './VditorBody.tsx'
 import css from './views.module.css'
+import { AssetAiGeneration, type GenerationApi, type AiDraft } from './AssetAiGeneration.tsx'
+import { AssetGeneration, StageFields } from './AssetGeneration.tsx'
+import { PROGRESSION_KINDS, generateId, validAssetId, validStages as areStagesValid, type Stage } from './asset-generation.ts'
 
 /** The summary fields the editor needs from the parsed detail. */
 export interface AssetEditorSource {
+  stages?: Stage[]
   name: string
   summary: string
   aliases: string[]
@@ -128,6 +132,7 @@ const ALWAYS_SCALARS: Record<string, readonly string[]> = {
 }
 
 interface AssetEditorProps {
+  generationApi?: GenerationApi
   kind: string
   /** Current values from the freshly loaded detail (remount on epoch change resets the draft). */
   source: AssetEditorSource
@@ -149,6 +154,7 @@ interface AssetEditorProps {
 }
 
 export interface AssetEditorDraft {
+  stages?: Stage[]
   name: string
   summary: string
   aliasesText: string
@@ -162,7 +168,8 @@ export interface AssetEditorDraft {
 }
 
 /** Read-write editor over one asset's allowed front-matter fields. */
-export function AssetEditor({ kind, source, candidates, saving, saveError, conflict, onSave, onFieldSave, fieldBusy, onCancel, onRefresh, onDirtyChange, initialDraft, onDraftChange, t }: AssetEditorProps) {
+export function AssetEditor({ generationApi, kind, source, candidates, saving, saveError, conflict, onSave, onFieldSave, fieldBusy, onCancel, onRefresh, onDirtyChange, initialDraft, onDraftChange, t }: AssetEditorProps) {
+  const [stages, setStages] = useState<Stage[]>(initialDraft?.stages ?? source.stages ?? [])
   const [name, setName] = useState(initialDraft?.name ?? source.name)
   const [summary, setSummary] = useState(initialDraft?.summary ?? source.summary)
   const [aliasesText, setAliasesText] = useState(initialDraft?.aliasesText ?? source.aliases.join('、'))
@@ -184,7 +191,7 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
   const [liveFailed, setLiveFailed] = useState(false)
 
   const scalarKeys = Object.keys(scalars)
-  const otherFieldsDirty = name !== source.name || summary !== source.summary ||
+  const otherFieldsDirty = JSON.stringify(stages) !== JSON.stringify(source.stages ?? []) || name !== source.name || summary !== source.summary ||
     JSON.stringify(splitList(aliasesText)) !== JSON.stringify(source.aliases) ||
     JSON.stringify(splitList(tagsText)) !== JSON.stringify(source.tags) ||
     JSON.stringify(related) !== JSON.stringify(source.related) ||
@@ -192,8 +199,8 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
     Object.keys(listsText).some(key => JSON.stringify(splitLines(listsText[key] ?? '')) !== JSON.stringify(source.lists.find(item => item.key === key)?.items ?? [])) ||
     newTarget !== '' || newNote !== ''
   const dirty = otherFieldsDirty || bodyDraft !== source.body
-  const draftRef = useRef<AssetEditorDraft>({ name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft })
-  draftRef.current = { name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft }
+  const draftRef = useRef<AssetEditorDraft>({ stages, name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft })
+  draftRef.current = { stages, name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft }
   const updateBody = (value: string) => {
     const draft = { ...draftRef.current, bodyDraft: value }
     draftRef.current = draft
@@ -207,8 +214,8 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => { onDirtyChange?.(false) }, [onDirtyChange])
   useEffect(() => {
-    onDraftChange?.({ name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft }, dirty)
-  }, [aliasesText, bodyDraft, dirty, listsText, name, newNote, newTarget, onDraftChange, related, scalars, summary, tagsText])
+    onDraftChange?.({ stages, name, summary, aliasesText, tagsText, scalars, related, listsText, newTarget, newNote, bodyDraft }, dirty)
+  }, [stages, aliasesText, bodyDraft, dirty, listsText, name, newNote, newTarget, onDraftChange, related, scalars, summary, tagsText])
 
   /**
    * Blur-commit one field when it drifted from the loaded detail. Single-key
@@ -242,11 +249,22 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
           ? row.target.trim()
           : { target: row.target.trim(), kind: row.kind.trim() || 'related', note: row.note.trim() })
     }
+    if (kind === 'progression') {
+      if (!areStagesValid(stages)) return
+      data['stages'] = stages.map(stage => ({ ...stage, id: stage.id.trim(), name: stage.name.trim() }))
+    }
     onSave(data, draftRef.current.bodyDraft)
   }
 
+  const applyAiDraft = (draft: AiDraft) => {
+    if (typeof draft['name'] === 'string') setName(draft['name'])
+    if (typeof draft['summary'] === 'string') setSummary(draft['summary'])
+    if (Array.isArray(draft['stages'])) setStages(draft['stages'])
+    setScalars(previous => ({ ...previous, ...Object.fromEntries(Object.entries(draft).filter(([key, value]) => !['name', 'summary', 'stages'].includes(key) && typeof value === 'string')) as Record<string, string> }))
+  }
   return (
     <div className={css.editor}>
+      {generationApi && <AssetAiGeneration kind={kind as 'character' | 'world' | 'progression'} api={generationApi} current={{ name, summary, ...scalars, stages }} busy={saving || fieldBusy !== null} onApply={applyAiDraft} t={t} />}
       <label className={css.editorRow}>
         <span className={css.editorLabel}>{t('assets.edit.name')}</span>
         <input className={css.input} value={name} onChange={event => { setName(event.target.value) }}
@@ -274,7 +292,11 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
       {scalarKeys.map(key => (
         <label key={key} className={css.editorRow}>
           <span className={css.editorLabel}>{fieldLabel(key, t)}</span>
-          <input
+          {kind === 'progression' && key === 'kind' ? <select className={css.input} value={scalars[key] || 'ability'} disabled={saving || fieldBusy === key}
+            onChange={event => { const value = event.target.value; setScalars(previous => ({ ...previous, [key]: value })); commitField(key, value) }}>
+            {!PROGRESSION_KINDS.includes(scalars[key] as typeof PROGRESSION_KINDS[number]) && scalars[key] && <option value={scalars[key]}>{scalars[key]}</option>}
+            {PROGRESSION_KINDS.map(value => <option key={value} value={value}>{t(`assets.progression.${value}`)}</option>)}
+          </select> : <input
             className={css.input}
             value={scalars[key] ?? ''}
             placeholder={(scalars[key] ?? '') === '' ? t('assets.edit.optional') : undefined}
@@ -284,9 +306,14 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
               if ((scalars[key] ?? '') !== baseline) commitField(key, scalars[key] ?? '')
             }}
             disabled={saving || fieldBusy === key}
-          />
+          />}
         </label>
       ))}
+      {kind === 'progression' && <>
+        <AssetGeneration kind="progression" progressionKind={scalars['kind'] || 'ability'} busy={saving || fieldBusy !== null} hasStages={stages.length > 0} onName={setName} onStages={setStages} t={t} />
+        <StageFields stages={stages} onChange={setStages} busy={saving} t={t} />
+        {!areStagesValid(stages) && <p className={css.errorText}>{t('assets.generate.invalid')}</p>}
+      </>}
       {Object.keys(listsText).map(key => (
         <label key={key} className={css.editorRow}>
           <span className={css.editorLabel}>{fieldLabel(key, t)}</span>
@@ -438,7 +465,7 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
       )}
       {!conflict && saveError !== null && <div className={css.errorText}>{saveError}</div>}
       <div className={css.editorActions}>
-        <button type="button" className={css.primaryButton} onClick={save} disabled={saving || fieldBusy !== null || name.trim() === ''}>
+        <button type="button" className={css.primaryButton} onClick={save} disabled={saving || fieldBusy !== null || name.trim() === '' || (kind === 'progression' && !areStagesValid(stages))}>
           {saving ? t('assets.edit.saving') : t('assets.edit.save')}
         </button>
         <button type="button" className={css.button} onClick={onCancel} disabled={saving}>
@@ -450,6 +477,8 @@ export function AssetEditor({ kind, source, candidates, saving, saveError, confl
 }
 
 interface NewAssetFormProps {
+  generationApi?: GenerationApi
+  existingIds?: readonly string[]
   kind: 'character' | 'world' | 'progression'
   busy: boolean
   error: string | null
@@ -459,26 +488,27 @@ interface NewAssetFormProps {
   t: TFunc
 }
 
-const PROGRESSION_KINDS = ['ability', 'rank', 'cultivation', 'career', 'reputation', 'curse', 'custom'] as const
 
 /** Inline create form for one asset kind (minimal required fields per the server contract). */
-export function NewAssetForm({ kind, busy, error, onSubmit, onCancel, onDirtyChange, t }: NewAssetFormProps) {
+export function NewAssetForm({ generationApi, existingIds = [], kind, busy, error, onSubmit, onCancel, onDirtyChange, t }: NewAssetFormProps) {
+  const [generatedData, setGeneratedData] = useState<Record<string, string>>({})
   const [id, setId] = useState('')
   const [name, setName] = useState('')
   const [summary, setSummary] = useState('')
   const [extra, setExtra] = useState('')
-  const [stages, setStages] = useState<{ id: string; name: string }[]>([{ id: '', name: '' }])
-  const dirty = id !== '' || name !== '' || summary !== '' || extra !== '' || stages.some(stage => stage.id !== '' || stage.name !== '')
+  const [stages, setStages] = useState<Stage[]>([{ id: 'stage_1', name: '' }])
+  const dirty = Object.keys(generatedData).length > 0 || id !== '' || name !== '' || summary !== '' || extra !== '' || stages.length !== 1 || stages.some(stage => stage.id !== 'stage_1' || stage.name !== '' || stage.abilities?.some(Boolean) || stage.limitations?.some(Boolean) || stage.requirements?.some(Boolean))
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => { onDirtyChange?.(false) }, [onDirtyChange])
 
   const extraLabel = kind === 'character' ? t('assets.create.tier') : kind === 'world' ? t('assets.create.type') : ''
-  const validId = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(id) && !id.includes('..')
-  const validStages = kind !== 'progression' || stages.some(stage => stage.id.trim() !== '' && stage.name.trim() !== '')
+  const validId = validAssetId(id) && !existingIds.includes(id)
+  const validStages = kind !== 'progression' || areStagesValid(stages)
   const canSubmit = validId && (kind !== 'progression' || name.trim() !== '') && validStages && !busy
 
   const submit = () => {
-    const data: Record<string, unknown> = { name: name.trim() || id }
+    if (!canSubmit) return
+    const data: Record<string, unknown> = { ...generatedData, name: name.trim() || id }
     if (summary.trim() !== '') data['summary'] = summary.trim()
     if (kind === 'character' && extra.trim() !== '') data['tier'] = extra.trim()
     if (kind === 'world' && extra.trim() !== '') data['type'] = extra.trim()
@@ -486,13 +516,24 @@ export function NewAssetForm({ kind, busy, error, onSubmit, onCancel, onDirtyCha
       data['kind'] = PROGRESSION_KINDS.includes(extra as (typeof PROGRESSION_KINDS)[number]) ? extra : 'ability'
       data['stages'] = stages
         .filter(stage => stage.id.trim() !== '' && stage.name.trim() !== '')
-        .map(stage => ({ id: stage.id.trim(), name: stage.name.trim() }))
+        .map(stage => ({ ...stage, id: stage.id.trim(), name: stage.name.trim() }))
     }
     onSubmit({ id: id.trim(), data })
   }
 
   return (
     <div className={css.editor}>
+      {generationApi && <AssetAiGeneration kind={kind} api={generationApi} current={{ ...generatedData, name, summary, ...(kind === 'progression' ? { kind: extra || 'ability', stages } : kind === 'world' ? { type: extra } : { tier: extra }) }} busy={busy} onApply={draft => {
+        if (typeof draft['name'] === 'string') setName(draft['name'])
+        if (typeof draft['summary'] === 'string') setSummary(draft['summary'])
+        if (Array.isArray(draft['stages'])) setStages(draft['stages'])
+        const extraKey = kind === 'progression' ? 'kind' : kind === 'world' ? 'type' : 'tier'
+        if (typeof draft[extraKey] === 'string') setExtra(draft[extraKey])
+        setGeneratedData(previous => ({ ...previous, ...Object.fromEntries(Object.entries(draft).filter(([key, value]) => !['name', 'summary', 'stages', extraKey].includes(key) && typeof value === 'string')) as Record<string, string> }))
+      }} t={t} />}
+      {Object.entries(generatedData).map(([key, value]) => <label key={key} className={css.editorRow}><span className={css.editorLabel}>{fieldLabel(key, t)}</span><textarea className={css.textarea} value={value} disabled={busy} onChange={e => setGeneratedData(previous => ({ ...previous, [key]: e.target.value }))} /></label>)}
+      <AssetGeneration kind={kind} progressionKind={extra || 'ability'} busy={busy} hasStages={stages.some(stage => stage.name !== '' || stage.abilities?.some(Boolean) || stage.limitations?.some(Boolean) || stage.requirements?.some(Boolean))} onName={setName} onStages={setStages} t={t} />
+      <button type="button" className={css.button} disabled={busy} onClick={() => setId(generateId(kind, existingIds))}>{t('assets.generate.id')}</button>
       <label className={css.editorRow}>
         <span className={css.editorLabel}>ID</span>
         <input
@@ -523,57 +564,14 @@ export function NewAssetForm({ kind, busy, error, onSubmit, onCancel, onDirtyCha
           <label className={css.editorRow}>
             <span className={css.editorLabel}>{t('assets.create.progressionKind')}</span>
             <select className={css.input} value={extra || 'ability'} onChange={event => { setExtra(event.target.value) }} disabled={busy}>
-              {PROGRESSION_KINDS.map(value => <option key={value} value={value}>{value}</option>)}
+              {PROGRESSION_KINDS.map(value => <option key={value} value={value}>{t(`assets.progression.${value}`)}</option>)}
             </select>
           </label>
-          <div className={css.editorRow}>
-            <span className={css.editorLabel}>{t('assets.create.stages')}</span>
-            <div className={css.relationEditor}>
-              {stages.map((stage, index) => (
-                <div key={index} className={css.relationRow}>
-                  <input
-                    className={css.input}
-                    value={stage.id}
-                    placeholder={t('assets.create.stageId')}
-                    onChange={event => {
-                      const value = event.target.value
-                      setStages(previous => previous.map((item, at) => (at === index ? { ...item, id: value } : item)))
-                    }}
-                    disabled={busy}
-                  />
-                  <input
-                    className={css.input}
-                    value={stage.name}
-                    placeholder={t('assets.create.stageName')}
-                    onChange={event => {
-                      const value = event.target.value
-                      setStages(previous => previous.map((item, at) => (at === index ? { ...item, name: value } : item)))
-                    }}
-                    disabled={busy}
-                  />
-                  <button
-                    type="button"
-                    className={css.iconButton}
-                    aria-label={t('assets.edit.removeRelation')}
-                    disabled={busy || stages.length <= 1}
-                    onClick={() => { setStages(previous => previous.filter((_, at) => at !== index)) }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className={css.button}
-                disabled={busy}
-                onClick={() => { setStages(previous => [...previous, { id: '', name: '' }]) }}
-              >
-                {t('assets.create.addStage')}
-              </button>
-            </div>
-          </div>
+          <StageFields stages={stages} onChange={setStages} busy={busy} t={t} />
+          {!validStages && <p className={css.errorText}>{t('assets.generate.invalid')}</p>}
         </>
       )}
+      {id !== '' && !validId && <p className={css.errorText}>{t('assets.generate.invalid')}</p>}
       {error !== null && error !== '' && <div className={css.errorText}>{error}</div>}
       <div className={css.editorActions}>
         <button type="button" className={css.primaryButton} onClick={submit} disabled={!canSubmit}>

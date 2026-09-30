@@ -1,0 +1,17 @@
+.root { padding: 20px; overflow: auto; height: 100%; box-sizing: border-box; }
+.root h2, .root h3 { margin: 0 0 12px; }
+.root p { line-height: 1.6; opacity: .85; }
+.root button { cursor: pointer; padding: 8px 12px; color: inherit; background: transparent; border: 1px solid #8886; border-radius: 6px; }
+.root button:disabled { cursor: wait; opacity: .5; }
+.root button:hover:not(:disabled) { background: #8882; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; }
+.controls label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.controls input, .controls select { color: inherit; background: transparent; padding: 7px 8px; border: 1px solid #8886; border-radius: 5px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.block { border: 1px solid #8884; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th, .table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8884; overflow-wrap: anywhere; }
+.progress { font-size: 12px; opacity: .8; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: auto; }
+.content { padding: 16px; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #8884; border-radius: 6px; max-height: 550px; overflow: auto; font-size: 13px; }
+.error { color: #dc5050; }
+.note { font-size: 13px; }

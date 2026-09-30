@@ -2706,3 +2706,18 @@ button.searchResultActive {
   .iconButton { min-width: 40px; }
 }
 .dagRevisionAction small { color: var(--dsw-alias-label-tertiary); }
+
+.stageCard {
+  min-width: 0;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+}
+
+.generationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}

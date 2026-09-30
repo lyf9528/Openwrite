@@ -15,11 +15,6 @@ import { normalizeMinimapProperties } from './scripts/react-flow-properties.mjs'
 /** Plugin id (package name), stamped into the module-loader handoff and style tags. */
 const ID = '@dsh-novel/studio-panel'
 
-// The host installs a versioned preset from the root distribution package.
-// Stamp only its ID into browser code; never bundle filesystem/package access.
-const releasePackage = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
-const releasePresetId = `openwrite-${releasePackage.version.replace(/[^a-z0-9-]/g, '-')}`
-
 /**
  * Browser platform modules the shell seeds into the frozen module table —
  * mirror of DSH packages/client/web/src/platform.ts (PLATFORM_MODULES) plus
@@ -79,7 +74,6 @@ const client: UserConfig = {
   platform: 'browser',
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
-    '__OPENWRITE_PRESET_ID__': JSON.stringify(releasePresetId),
   },
   dts: false,
   sourcemap: true,

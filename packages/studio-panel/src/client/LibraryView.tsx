@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { BookMarked, Boxes, FlaskConical, Network, Search } from 'lucide-react'
+import { BookMarked, Boxes, FlaskConical, Network, Search, Sparkles, TrendingUp } from 'lucide-react'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { StudioApiInjected } from './api.ts'
@@ -8,12 +8,14 @@ import { DiscardDraftDialog } from './DiscardDraftDialog.tsx'
 import { GraphView } from './GraphView.tsx'
 import { OutlineView } from './OutlineView.tsx'
 import { ResearchView } from './ResearchView.tsx'
+import { SaobangView } from './SaobangView.tsx'
 import { SearchView } from './SearchView.tsx'
+import { SkillsView } from './SkillsView.tsx'
 import { useWorkbench } from './WorkbenchStore.ts'
 import { useBindStudioContext } from './workspace-context.ts'
 import css from './Workbench.module.css'
 
-type LibraryMode = 'assets' | 'outline' | 'graph' | 'research' | 'search'
+type LibraryMode = 'assets' | 'outline' | 'graph' | 'research' | 'search' | 'skills' | 'saobang'
 
 export type LibraryViewProps = ConvViewProps & InjectFace<StudioApiInjected> & PropsLocale<'studio-panel'>
 
@@ -34,6 +36,8 @@ export function LibraryView(props: LibraryViewProps) {
     { id: 'graph' as const, icon: Network, label: props.t('view.graph') },
     { id: 'research' as const, icon: FlaskConical, label: props.t('view.research') },
     { id: 'search' as const, icon: Search, label: props.t('view.search') },
+    { id: 'skills' as const, icon: Sparkles, label: 'Skill' },
+    { id: 'saobang' as const, icon: TrendingUp, label: '扫榜' },
   ]
   return (
     <div className={css.workspaceRoot}>
@@ -57,6 +61,8 @@ export function LibraryView(props: LibraryViewProps) {
         {mode === 'graph' && <GraphView key={workbench.epochs.graph} {...props} />}
         {mode === 'research' && <ResearchView key={workbench.epochs.research} {...props} />}
         {mode === 'search' && <SearchView key={workbench.epochs.workspace} {...props} />}
+        {mode === 'skills' && <SkillsView key={workbench.contextEpoch} {...props} />}
+        {mode === 'saobang' && <SaobangView key={workbench.contextEpoch} {...props} />}
       </section>
       {pendingMode !== null && pendingMode.contextEpoch === workbench.contextEpoch && <DiscardDraftDialog t={props.t}
         onKeep={() => { setPendingMode(null) }}

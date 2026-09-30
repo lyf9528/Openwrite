@@ -1,0 +1,17 @@
+.root { padding: 20px; overflow: auto; height: 100%; box-sizing: border-box; }
+.root h2, .root h3 { margin: 0 0 12px; }
+.root p { line-height: 1.6; opacity: .85; }
+.root button { cursor: pointer; padding: 8px 12px; color: inherit; background: transparent; border: 1px solid #8886; border-radius: 6px; }
+.root button:disabled { cursor: wait; opacity: .5; }
+.root button:hover:not(:disabled), .root button[aria-pressed=true] { background: #8882; }
+.upload { border: 1px solid #8885; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.upload label { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0; }
+.upload input { color: inherit; background: transparent; padding: 8px; border: 1px solid #8886; border-radius: 5px; max-width: 100%; box-sizing: border-box; }
+.columns { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 24px; }
+.item { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 8px; text-align: left; overflow-wrap: anywhere; }
+.item span { width: 100%; font-size: 13px; }
+.item small { opacity: .65; }
+.content { padding: 16px; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #8884; border-radius: 6px; max-height: 550px; overflow: auto; }
+.error { color: #dc5050; }
+.path { font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .columns { grid-template-columns: 1fr; } }

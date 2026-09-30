@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { chmod, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
@@ -395,7 +396,7 @@ export class ManagedRuntime {
     // Windows defaults redirected stdout to its legacy locale encoding. Core
     // initialization logs and manuscript paths are Unicode; -I ignores Python
     // environment options, so set UTF-8 explicitly on the interpreter as well.
-    const child = this.spawnFn(python, ['-I', '-X', 'utf8', '-u', '-m', 'tools.managed_runtime'], {
+    const child = this.spawnFn(python, ['-I', '-X', 'utf8', '-u', fileURLToPath(new URL('../../../scripts/runtime/managed_entry.py', import.meta.url))], {
       cwd: this.root, detached: process.platform !== 'win32', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
       env: buildChildEnv(process.env, { PYTHONNOUSERSITE: '1', PYTHONUTF8: '1' }),
     })

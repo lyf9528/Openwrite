@@ -149,10 +149,17 @@ assert.ok(toolKeys.length >= 30, 'common novel tools use family cards')
 // package. A hardcoded older ID must fail here before a version can be released.
 const presetHome = await mkdtemp(join(tmpdir(), 'openwrite-launch-smoke-'))
 const previousHome = process.env.DSH_HOME
+const previousFetch = globalThis.fetch
 const presetDisposers = []
 process.env.DSH_HOME = presetHome
 try {
   await installReleasePreset({ effect: factory => presetDisposers.push(factory()) })
+  const installedVersion = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url))).version
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/studio-panel/config.json')
+    assert.equal(options.cache, 'no-store')
+    return { ok: true, json: async () => ({ presetId: `openwrite-${installedVersion.replace(/[^a-z0-9-]/g, '-')}` }) }
+  }
   const calls = []
   fakeClientCtx.workspaces.create = async input => {
     calls.push(['workspace', input.path])
@@ -179,6 +186,7 @@ try {
   assert.deepEqual(calls[0], ['workspace', '/isolated-writing-workspace'])
   assert.deepEqual(calls[3], ['activate', 'launch-session', 'openwrite.creation'])
 } finally {
+  globalThis.fetch = previousFetch
   for (const dispose of presetDisposers) await dispose()
   if (previousHome === undefined) delete process.env.DSH_HOME
   else process.env.DSH_HOME = previousHome

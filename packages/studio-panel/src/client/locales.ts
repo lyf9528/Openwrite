@@ -5,6 +5,55 @@ export const NS = 'studio-panel'
 
 /** The studio-panel dictionary key set (the source of truth for both locales). */
 export type StudioPanelKey =
+  | 'assets.generate.id'
+  | 'assets.generate.names'
+  | 'assets.generate.title'
+  | 'assets.generate.genre'
+  | 'assets.generate.surname'
+  | 'assets.generate.category'
+  | 'assets.generate.direction'
+  | 'assets.generate.count'
+  | 'assets.generate.stages'
+  | 'assets.generate.apply'
+  | 'assets.generate.overwrite'
+  | 'assets.generate.hint'
+  | 'assets.generate.invalid'
+  | 'assets.stage.abilities'
+  | 'assets.stage.limitations'
+  | 'assets.stage.requirements'
+  | 'assets.stage.remove'
+  | 'assets.progression.ability'
+  | 'assets.progression.rank'
+  | 'assets.progression.cultivation'
+  | 'assets.progression.career'
+  | 'assets.progression.reputation'
+  | 'assets.progression.curse'
+  | 'assets.progression.custom'
+  | 'assets.genre.xianxia'
+  | 'assets.genre.fantasy'
+  | 'assets.genre.urban'
+  | 'assets.genre.scifi'
+  | 'assets.genre.wuxia'
+  | 'assets.category.location'
+  | 'assets.category.organization'
+  | 'assets.category.item'
+  | 'assets.category.rule'
+  | 'assets.ai.title'
+  | 'assets.ai.hint'
+  | 'assets.ai.model'
+  | 'assets.ai.default'
+  | 'assets.ai.noModel'
+  | 'assets.ai.instructions'
+  | 'assets.ai.example'
+  | 'assets.ai.context'
+  | 'assets.ai.names'
+  | 'assets.ai.generate'
+  | 'assets.ai.running'
+  | 'assets.ai.failed'
+  | 'assets.ai.invalid'
+  | 'assets.ai.preview'
+  | 'assets.ai.selectHint'
+  | 'assets.ai.apply'
   | 'view.overview'
   | 'view.writing'
   | 'view.studio'
@@ -1730,6 +1779,55 @@ export const zh: Record<StudioPanelKey, string> = {
   'assets.field.role': '角色定位',
   'assets.edit.liveFailed': '实时编辑器加载失败，已回退到纯文本编辑。',
   'assets.selectHint': '选择左侧的条目查看或编辑。',
+  'assets.generate.id': "生成 ID",
+  'assets.generate.names': "随机名称 / 换一批",
+  'assets.generate.title': "按条件生成（本地模板）",
+  'assets.generate.genre': "题材",
+  'assets.generate.surname': "姓氏（可选）",
+  'assets.generate.category': "设定类别",
+  'assets.generate.direction': "能力方向（可选）",
+  'assets.generate.count': "阶段数量（1–12）",
+  'assets.generate.stages': "生成阶段与能力 / 换一批",
+  'assets.generate.apply': "采用阶段草稿",
+  'assets.generate.overwrite': "允许替换已填写的阶段",
+  'assets.generate.hint': "候选内容不会自动保存；点击名称可填入，阶段草稿可预览后采用。",
+  'assets.generate.invalid': "ID 必须合法且不重复，每个阶段都需填写名称。",
+  'assets.stage.abilities': "能力（每行一项）",
+  'assets.stage.limitations': "限制（每行一项）",
+  'assets.stage.requirements': "晋升条件（每行一项）",
+  'assets.stage.remove': "删除阶段",
+  'assets.progression.ability': "能力",
+  'assets.progression.rank': "等阶",
+  'assets.progression.cultivation': "修炼",
+  'assets.progression.career': "职业",
+  'assets.progression.reputation': "声望",
+  'assets.progression.curse': "诅咒",
+  'assets.progression.custom': "自定义",
+  'assets.genre.xianxia': "仙侠修真",
+  'assets.genre.fantasy': "奇幻",
+  'assets.genre.urban': "都市异能",
+  'assets.genre.scifi': "科幻",
+  'assets.genre.wuxia': "武侠",
+  'assets.category.location': "地点",
+  'assets.category.organization': "组织",
+  'assets.category.item': "物品",
+  'assets.category.rule': "规则",
+  'assets.ai.title': "AI 生成",
+  'assets.ai.hint': "使用「任务 → 模型」中的配置调用模型，会消耗模型额度。结果仅供预览，采用后仍需保存。",
+  'assets.ai.model': "生成模型",
+  'assets.ai.default': "使用大纲规划路由 / 默认模型",
+  'assets.ai.noModel': "没有可用模型，请先在「任务 → 模型」配置并保存。",
+  'assets.ai.instructions': "生成要求",
+  'assets.ai.example': "例如：都市异能，雷电方向，能力有代价，避免无敌设定。",
+  'assets.ai.context': "附带当前作品的设定与进阶体系（发送给所选模型）",
+  'assets.ai.names': "AI 生成名称 / 换一批",
+  'assets.ai.generate': "AI 生成完整草稿 / 重新生成",
+  'assets.ai.running': "模型生成中，请稍候…",
+  'assets.ai.failed': "AI 生成失败，请重试",
+  'assets.ai.invalid': "模型返回格式不正确，请重新生成",
+  'assets.ai.preview': "AI 候选草稿",
+  'assets.ai.selectHint': "只勾选需要填入的字段；已有内容默认不勾选，勾选后将替换该字段。",
+  'assets.ai.apply': "采用所选字段",
   'assets.create.open': '新建',
   'assets.create.submit': '创建',
   'assets.create.idHint': '字母或数字开头，可含 _ . -',
@@ -2791,6 +2889,55 @@ export const en: Record<StudioPanelKey, string> = {
   'assets.field.role': 'Role',
   'assets.edit.liveFailed': 'The live editor failed to load; fell back to plain text editing.',
   'assets.selectHint': 'Select an entry on the left to view or edit.',
+  'assets.generate.id': "Generate ID",
+  'assets.generate.names': "Generate names / Retry",
+  'assets.generate.title': "Generate from local templates",
+  'assets.generate.genre': "Genre",
+  'assets.generate.surname': "Surname (optional)",
+  'assets.generate.category': "World category",
+  'assets.generate.direction': "Ability direction (optional)",
+  'assets.generate.count': "Stage count (1–12)",
+  'assets.generate.stages': "Generate stages and abilities / Retry",
+  'assets.generate.apply': "Use stage draft",
+  'assets.generate.overwrite': "Replace filled stages",
+  'assets.generate.hint': "Candidates are not saved automatically. Select a name or preview and apply stages.",
+  'assets.generate.invalid': "IDs must be valid and unique; each stage needs a name.",
+  'assets.stage.abilities': "Abilities (one per line)",
+  'assets.stage.limitations': "Limitations (one per line)",
+  'assets.stage.requirements': "Requirements (one per line)",
+  'assets.stage.remove': "Remove stage",
+  'assets.progression.ability': "Ability",
+  'assets.progression.rank': "Rank",
+  'assets.progression.cultivation': "Cultivation",
+  'assets.progression.career': "Career",
+  'assets.progression.reputation': "Reputation",
+  'assets.progression.curse': "Curse",
+  'assets.progression.custom': "Custom",
+  'assets.genre.xianxia': "Cultivation",
+  'assets.genre.fantasy': "Fantasy",
+  'assets.genre.urban': "Urban supernatural",
+  'assets.genre.scifi': "Science fiction",
+  'assets.genre.wuxia': "Martial arts",
+  'assets.category.location': "Location",
+  'assets.category.organization': "Organization",
+  'assets.category.item': "Item",
+  'assets.category.rule': "Rule",
+  'assets.ai.title': "AI generation",
+  'assets.ai.hint': "Uses configured models and consumes model quota. Preview and apply, then save.",
+  'assets.ai.model': "Model",
+  'assets.ai.default': "Planning route / default model",
+  'assets.ai.noModel': "Configure and save a chat model in Tasks → Models first.",
+  'assets.ai.instructions': "Requirements",
+  'assets.ai.example': "Genre, style, powers, limitations…",
+  'assets.ai.context': "Include current world and progression assets (sent to the model)",
+  'assets.ai.names': "AI names / Retry",
+  'assets.ai.generate': "AI draft / Regenerate",
+  'assets.ai.running': "Generating…",
+  'assets.ai.failed': "AI generation failed; retry",
+  'assets.ai.invalid': "Invalid model output; regenerate",
+  'assets.ai.preview': "AI draft preview",
+  'assets.ai.selectHint': "Select fields to apply. Existing fields are unchecked by default; selecting replaces them.",
+  'assets.ai.apply': "Apply selected fields",
   'assets.create.open': 'New',
   'assets.create.submit': 'Create',
   'assets.create.idHint': 'Starts with a letter or digit; may contain _ . -',

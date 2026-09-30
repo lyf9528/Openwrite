@@ -388,7 +388,8 @@ const configRoute = routes.find(route => route.path === '/studio-panel/config.js
 const configResponse = capture()
 await configRoute.handler({ method: 'GET' }, configResponse)
 assert.equal(configResponse.status, 200)
-assert.deepEqual(JSON.parse(configResponse.body), { studioUrl: resolved.baseUrl })
+const releaseVersion = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url), 'utf8')).version
+assert.deepEqual(JSON.parse(configResponse.body), { studioUrl: resolved.baseUrl, presetId: `openwrite-${releaseVersion.replace(/[^a-z0-9-]/g, '-')}` })
 
 const invalidationRoute = routes.find(route => route.path === '/studio-panel/invalidation.json')
 const eventsRoute = routes.find(route => route.path === '/studio-panel/events')

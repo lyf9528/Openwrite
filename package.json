@@ -1,6 +1,6 @@
 {
   "name": "dsh-openwrite",
-  "version": "0.2.10",
+  "version": "0.2.11-dev.2",
   "description": "OpenWrite 长篇小说领域后端接入 DeepSeek Harness：统一创作 Agent 预设 + 原生创作工作台",
   "type": "module",
   "scripts": {
@@ -18,6 +18,7 @@
     "check": "npm run check:plugin && npm run test:contracts",
     "test:lifecycle": "node --test scripts/lifecycle.test.mjs",
     "test:runtime": "node --test packages/openwrite-bridge/scripts/runtime-lifecycle.test.mjs",
+    "test:skills": "npm --prefix packages/openwrite-bridge run build && npm --prefix packages/openwrite-bridge run test:skills",
     "check:plugin": "npm run build && npm run doctor && npm run test:maintenance && npm run test:profiles && npm run test:preset && npm --prefix packages/openwrite-bridge run smoke && npm --prefix packages/studio-panel run smoke && npm run test:epochs && npm run test:components",
     "test:profiles": "node scripts/profile-smoke.mjs",
     "prepare": "node scripts/prepare.mjs",
@@ -90,6 +91,7 @@
     "packages/studio-panel/lib",
     "packages/studio-panel/package.json",
     "scripts/dog",
+    "scripts/runtime/managed_entry.py",
     "scripts/maintenance.mjs",
     "packages/openwrite-bridge/LICENSE",
     "packages/studio-panel/LICENSE",
@@ -104,6 +106,7 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "fflate": "0.8.2",
+    "yaml": "^2.8.1",
     "proper-lockfile": "4.1.2",
     "tar": "7.5.7"
   },

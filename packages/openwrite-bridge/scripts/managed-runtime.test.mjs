@@ -152,7 +152,7 @@ async function prepared(t) {
 function backendSpawn(t, extraEnv = {}, recorded = []) {
   const spawnFn = (command, args, options) => {
     recorded.push({ command, args: [...args], env: { ...(options.env ?? {}) } })
-    if (args.includes('tools.managed_runtime')) {
+    if (args.some(arg => arg.endsWith('managed_entry.py'))) {
       return spawn(process.execPath, ['-e', BACKEND], {
         ...options,
         env: { ...options.env, ...extraEnv() },
@@ -240,7 +240,7 @@ test('ready managed child auto-restarts with backoff; cap leaves a retryable err
   assert.equal(runtime.status().phase, 'ready')
   assert.ok(first.token)
   assert.equal((await fetch(first.baseUrl + '/api/health')).status, 401)
-  const backendSpawns = () => recorded.filter(item => item.args.includes('tools.managed_runtime'))
+  const backendSpawns = () => recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py')))
   assert.equal(backendSpawns()[0].env.OPENAI_API_KEY, undefined)
   assert.equal(backendSpawns()[0].env.ANTHROPIC_API_KEY, undefined)
   assert.equal(backendSpawns()[0].env.LLM_API_KEY, undefined)
@@ -288,10 +288,10 @@ test('cancel, dispose and a stale child exit do not revive or clobber a newer co
   assert.notEqual(runtime.status().phase, 'ready')
   const b = await runtime.ensure()
   assert.equal(runtime.status().phase, 'ready')
-  const spawnsBeforeDispose = recorded.filter(item => item.args.includes('tools.managed_runtime')).length
+  const spawnsBeforeDispose = recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length
   await runtime.dispose()
   await new Promise(resolve => setTimeout(resolve, 50))
-  assert.equal(recorded.filter(item => item.args.includes('tools.managed_runtime')).length, spawnsBeforeDispose)
+  assert.equal(recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length, spawnsBeforeDispose)
   await assert.rejects(runtime.ensure(), /卸载/)
   assert.notEqual(a.baseUrl, b.baseUrl)
 })
@@ -413,14 +413,14 @@ test('cancel and dispose during recovery wait do not reject unhandled or start a
   })
   t.after(() => runtime.dispose())
   await runtime.ensure()
-  const afterReady = recorded.filter(item => item.args.includes('tools.managed_runtime')).length
+  const afterReady = recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length
   await stopOwnedProcess(runtime.child)
   await waitPhase(runtime, 'recovering')
-  assert.equal(recorded.filter(item => item.args.includes('tools.managed_runtime')).length, afterReady)
+  assert.equal(recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length, afterReady)
   await runtime.cancel()
   await new Promise(resolve => setTimeout(resolve, 80))
   assert.equal(runtime.status().phase, 'cancelled')
-  assert.equal(recorded.filter(item => item.args.includes('tools.managed_runtime')).length, afterReady)
+  assert.equal(recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length, afterReady)
   assert.equal(seen.length, 0, `cancel leaked unhandledRejection: ${seen.map(String).join('; ')}`)
 
   const second = new ManagedRuntime(root, artifacts, {
@@ -431,13 +431,13 @@ test('cancel and dispose during recovery wait do not reject unhandled or start a
   })
   t.after(() => second.dispose())
   await second.ensure()
-  const beforeDispose = recorded.filter(item => item.args.includes('tools.managed_runtime')).length
+  const beforeDispose = recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length
   await stopOwnedProcess(second.child)
   await waitPhase(second, 'recovering')
   await second.dispose()
   await new Promise(resolve => setTimeout(resolve, 80))
   assert.equal(second.status().phase, 'uninstalled')
-  assert.equal(recorded.filter(item => item.args.includes('tools.managed_runtime')).length, beforeDispose)
+  assert.equal(recorded.filter(item => item.args.some(arg => arg.endsWith('managed_entry.py'))).length, beforeDispose)
   assert.equal(seen.length, 0, `dispose leaked unhandledRejection: ${seen.map(String).join('; ')}`)
 })
 

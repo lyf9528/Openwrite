@@ -82,9 +82,15 @@ export function apply(ctx: Context): void {
     inject: () => ({ openWorkspace: async (path?: string) => {
       const selected = path?.trim() || await ctx.uiWorkspace.pickDirectory()
       if (selected === null) return false
+      const response = await fetch('/studio-panel/config.json', { cache: 'no-store' })
+      if (!response.ok) throw new Error('无法读取 OpenWrite 预设配置，请检查插件安装并重启 dsh')
+      const config = await response.json() as { presetId?: unknown }
+      if (typeof config.presetId !== 'string' || !/^openwrite-[a-z0-9-]+$/.test(config.presetId)) {
+        throw new Error('OpenWrite 前后端版本不一致，请更新插件并重启 dsh')
+      }
       const workspace = await ctx.workspaces.create({ path: selected })
       const sessionId = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
-      const result = await ctx.remote.agentPresets.select(sessionId, __OPENWRITE_PRESET_ID__)
+      const result = await ctx.remote.agentPresets.select(sessionId, config.presetId)
       if (!result.ok) throw new Error(result.error.message)
       ctx.sessions.open(sessionId)
       // Activate a UI target to leave the blank Hero without manufacturing a user turn.

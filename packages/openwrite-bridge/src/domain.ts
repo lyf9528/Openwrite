@@ -1,9 +1,12 @@
 import type { BackendConnection } from './managed-runtime.js'
+import { readFile } from 'node:fs/promises'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { StudioClient, workspaceRootHeaders, type WorkspaceContext } from './client.js'
 import { workspaceContextFromExec } from './tools.js'
+import { listSkills, skillAction, SkillError, SKILL_LIMIT } from './skills.js'
+import { saobangCategories, saobangJobCancel, saobangJobStatus, saobangRank, saobangReportStart, SaobangError } from './saobang.js'
 
 export const CONFIG_ROUTE = '/studio-panel/config.json'
 export const API_PROXY_ROUTE = '/studio-panel/api'
@@ -16,6 +19,7 @@ const CONTEXT_EPOCH_TIMEOUT_MS = 5_000
 const WRITABLE_PATHS = new Set([
   'assets',
   'assets/update',
+  'assets/generate',
   'assets/package/import',
   'outline/edit',
   'rolling-plans',
@@ -372,14 +376,20 @@ export class NovelDomainService extends Service {
     ctx.effect(() => register({
       kind: 'exact',
       path: CONFIG_ROUTE,
-      handler: (req, res) => {
+      handler: async (req, res) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') {
           res.writeHead(405)
           res.end()
           return
         }
-        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' })
-        res.end(JSON.stringify({ studioUrl: this.baseUrl }))
+        try {
+          const release = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url), 'utf8'))
+          if (typeof release.version !== 'string' || !release.version) throw new Error('missing package version')
+          const presetId = `openwrite-${release.version.replace(/[^a-z0-9-]/g, '-')}`
+          sendJson(res, 200, { studioUrl: this.baseUrl, presetId })
+        } catch {
+          sendJson(res, 503, { error: '无法读取 OpenWrite 预设版本，请检查插件安装' })
+        }
       },
     }), 'novel-domain: config route')
     ctx.effect(() => register({
@@ -475,6 +485,54 @@ export class NovelDomainService extends Service {
       }
       const method = req.method ?? 'GET'
       const pathPart = sub.split('?')[0]?.slice(1) ?? ''
+      // Skills live on the dsh host, not in the Python writing backend.
+      if (pathPart === 'skills' || pathPart.startsWith('skills/')) {
+        try {
+          if (pathPart === 'skills' && method === 'GET') {
+            sendJson(res, 200, await listSkills(resolved.root))
+          } else if (method === 'POST' && /^skills\/(preview|import|read|export)$/.test(pathPart)) {
+            const chunks: Buffer[] = []
+            let size = 0
+            if (req[Symbol.asyncIterator]) {
+              for await (const chunk of req[Symbol.asyncIterator]!()) {
+                const bytes = Buffer.from(chunk)
+                size += bytes.length
+                if (size > SKILL_LIMIT * 1.4 + 65536) throw new SkillError('上传文件超过 8 MB', 413)
+                chunks.push(bytes)
+              }
+            }
+            const input = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+            sendJson(res, 200, await skillAction(resolved.root, pathPart.slice(7), input))
+          } else sendJson(res, 405, { error: '不支持的技能操作' })
+        } catch (error) {
+          sendJson(res, error instanceof SkillError ? error.status : 400, { error: error instanceof Error ? error.message : String(error) })
+        }
+        return
+      }
+      // 扫榜同样由 dsh 宿主侧执行（spawn 专用 venv 的 Python 脚本），不经过 Python 写作后端。
+      if (pathPart === 'saobang' || pathPart.startsWith('saobang/')) {
+        try {
+          const route = pathPart === 'saobang' ? '' : pathPart.slice('saobang/'.length)
+          const query = new URL(sub, 'http://localhost').searchParams
+          if (route === 'categories' && method === 'GET') {
+            sendJson(res, 200, await saobangCategories())
+          } else if (route === 'rank' && method === 'GET') {
+            sendJson(res, 200, await saobangRank(query.get('path') ?? '', Number(query.get('limit') ?? 20)))
+          } else if (route === 'report' && method === 'POST') {
+            const payload = JSON.parse((await readBody(req)).toString('utf8') || '{}') as Record<string, unknown>
+            sendJson(res, 200, saobangReportStart(payload))
+          } else {
+            const jobMatch = /^jobs\/([A-Za-z0-9_-]+)(\/cancel)?$/.exec(route)
+            if (!jobMatch) sendJson(res, 405, { error: '不支持的扫榜操作' })
+            else if (method === 'GET' && jobMatch[2] === undefined) sendJson(res, 200, saobangJobStatus(jobMatch[1]!))
+            else if (method === 'POST' && jobMatch[2] !== undefined) sendJson(res, 200, saobangJobCancel(jobMatch[1]!))
+            else sendJson(res, 405, { error: '不支持的扫榜操作' })
+          }
+        } catch (error) {
+          sendJson(res, error instanceof SaobangError ? error.status : 400, { error: error instanceof Error ? error.message : String(error) })
+        }
+        return
+      }
       const isWrite = method === 'POST' || method === 'PUT'
       if (!isWrite && method !== 'GET' && method !== 'HEAD') {
         sendJson(res, 405, { error: 'novel-domain proxy allows only GET/HEAD and allowlisted writes' })
@@ -505,7 +563,7 @@ export class NovelDomainService extends Service {
           method,
           headers,
           ...(body !== undefined ? { body: new Uint8Array(body) } : {}),
-          signal: AbortSignal.any([lifetime, AbortSignal.timeout(PROXY_TIMEOUT_MS)]),
+          signal: AbortSignal.any([lifetime, AbortSignal.timeout(pathPart === 'assets/generate' ? 150_000 : PROXY_TIMEOUT_MS)]),
         })
         if (lifetime.aborted) return
         const upstreamBytes = Buffer.from(await upstream.arrayBuffer())
@@ -519,7 +577,7 @@ export class NovelDomainService extends Service {
         if (disposition !== null) responseHeaders['content-disposition'] = disposition
         res.writeHead(upstream.status, responseHeaders)
         res.end(bytes)
-        if (isWrite && upstream.ok) {
+        if (isWrite && upstream.ok && pathPart !== 'assets/generate') {
           this.notifyMutation(`/api/${pathPart}`, { workspaceRoot: resolved.root, workspaceId: resolved.id })
         }
       } catch (error) {

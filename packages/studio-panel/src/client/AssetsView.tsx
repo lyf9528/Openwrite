@@ -1,3 +1,4 @@
+import { PROGRESSION_KINDS, type Stage } from './asset-generation.ts'
 /**
  * Assets view (资产): OpenWrite's structured canon library (Studio's 资料库)
  * rendered natively as an Obsidian-like master-detail layout — left sidebar
@@ -95,6 +96,7 @@ interface RelationItem {
  * echoed back on update.
  */
 interface AssetDetail {
+  stages: Stage[]
   revision: string
   name: string
   summary: string
@@ -315,6 +317,9 @@ function parseAssetDetail(data: unknown): AssetDetail {
       : [],
     tags: Array.isArray(frontMatter['tags'])
       ? frontMatter['tags'].filter((item): item is string => typeof item === 'string' && item !== '')
+      : [],
+    stages: Array.isArray(frontMatter['stages'])
+      ? frontMatter['stages'].filter((stage): stage is Stage => stage !== null && typeof stage === 'object' && typeof stage.id === 'string' && typeof stage.name === 'string')
       : [],
     scalars,
     fields,
@@ -723,7 +728,7 @@ export function AssetsView({ fetchStudioApi, postStudioApi, t, refreshEpoch = 0,
   const renderAssetRow = (asset: AssetSummary) => {
     const key = `${asset.kind}:${asset.id}`
     const meta = asset.assetType !== ''
-      ? asset.assetType
+      ? asset.kind === 'progression' && PROGRESSION_KINDS.includes(asset.assetType as typeof PROGRESSION_KINDS[number]) ? t(`assets.progression.${asset.assetType as typeof PROGRESSION_KINDS[number]}`) : asset.assetType
       : asset.stageCount !== null
         ? `${asset.stageCount} ${t('assets.stages')}`
         : ''
@@ -853,6 +858,7 @@ export function AssetsView({ fetchStudioApi, postStudioApi, t, refreshEpoch = 0,
           {draftStorageFailed ? t('creation.draft.unavailable') : restoredKey === key ? t('assets.draft.restored') : t('assets.draft.unsaved')}
         </div>}
         <AssetEditor
+          generationApi={{ fetchStudioApi, postStudioApi }}
           // Remount only on draft-epoch change (conflict/cancel refetch):
           // field autosaves chain revisions WITHOUT resetting the other drafts.
           key={`${key}:${draftEpoch}`}
@@ -901,7 +907,10 @@ export function AssetsView({ fetchStudioApi, postStudioApi, t, refreshEpoch = 0,
       return (
         <div className={css.createPanel}>
           <NewAssetForm
+            generationApi={{ fetchStudioApi, postStudioApi }}
+            key={kind}
             kind={kind}
+            existingIds={assets.filter(asset => asset.kind === kind).map(asset => asset.id)}
             busy={createBusy}
             error={createError}
             onSubmit={(payload) => { createAsset(kind, payload) }}

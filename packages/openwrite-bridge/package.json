@@ -21,6 +21,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "smoke": "node scripts/smoke.mjs",
+    "test:skills": "node scripts/skills.test.mjs",
     "test:contracts": "node scripts/contract-smoke.mjs && node scripts/dog-canonical.mjs"
   },
   "dsh": {
@@ -31,6 +32,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "fflate": "0.8.2",
+    "yaml": "^2.8.1",
     "proper-lockfile": "4.1.2",
     "tar": "7.5.7"
   },
